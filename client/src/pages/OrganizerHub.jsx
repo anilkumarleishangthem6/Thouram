@@ -3,6 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import ScannerModal from '../components/ScannerModal';
+import CreateEventModal from '../components/CreateEventModal';
 
 export default function OrganizerHub() {
   const { user } = useAuth();
@@ -20,6 +21,9 @@ export default function OrganizerHub() {
   const [workQualityScore, setWorkQualityScore] = useState(5);
   const [feedbackNotes, setFeedbackNotes] = useState('');
   const [hoursToVerify, setHoursToVerify] = useState(4.5);
+
+  // Create Event Wizard state
+  const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
   // Submanager delegation state
   const [isDelegateModalOpen, setIsDelegateModalOpen] = useState(false);
@@ -133,6 +137,11 @@ export default function OrganizerHub() {
     }
   };
 
+  const handleEventCreated = (newEvent) => {
+    setEvents(prev => [newEvent, ...prev]);
+    setSelectedEventId(newEvent._id);
+  };
+
   const handleDelegateMember = async (e) => {
     e.preventDefault();
     const event = rosterData?.event;
@@ -209,6 +218,13 @@ export default function OrganizerHub() {
               ))}
             </select>
 
+            <button
+              onClick={() => setIsCreateEventOpen(true)}
+              className="px-4 py-2.5 bg-[#004653] text-white hover:bg-[#245e6b] text-xs font-bold rounded-xl shadow-xs transition-all whitespace-nowrap flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">add_circle</span>
+              Create Event
+            </button>
             <button
               onClick={() => setIsDelegateModalOpen(true)}
               className="px-4 py-2.5 bg-white text-[#004653] border border-[#004653] hover:bg-[#e7eefb] text-xs font-bold rounded-xl transition-colors whitespace-nowrap flex items-center justify-center gap-1"
@@ -638,6 +654,13 @@ export default function OrganizerHub() {
           </div>
         </div>
       )}
+
+      {/* Create Event Wizard Modal */}
+      <CreateEventModal
+        isOpen={isCreateEventOpen}
+        onClose={() => setIsCreateEventOpen(false)}
+        onEventCreated={handleEventCreated}
+      />
 
       {/* Role Delegation Modal */}
       {isDelegateModalOpen && (

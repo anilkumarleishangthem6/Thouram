@@ -108,7 +108,14 @@ export default function VolunteerDashboard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <Link
+              to="/profile"
+              className="px-4 py-2.5 bg-white hover:bg-[#e7eefb] text-[#004653] text-xs font-bold rounded-xl border border-[#004653] transition-colors flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-[16px]">tune</span>
+              Skills & Preferences
+            </Link>
             <Link
               to="/events"
               className="px-4 py-2.5 bg-[#004653] hover:bg-[#245e6b] text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center gap-1.5"

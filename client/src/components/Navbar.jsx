@@ -5,9 +5,14 @@ import BrandLogo from './BrandLogo';
 import axios from 'axios';
 
 export default function Navbar() {
-  const { user, logout, quickSwitch } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -17,6 +22,8 @@ export default function Navbar() {
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -26,6 +33,18 @@ export default function Navbar() {
       if (res.data.success) {
         setNotifications(res.data.notifications || []);
         setUnreadCount(res.data.unreadCount || 0);
+      }
+    } catch (err) {}
+  };
+
+  const markSingleRead = async (id, actionUrl) => {
+    try {
+      await axios.patch(`/api/v1/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (actionUrl) {
+        setShowNotifications(false);
+        navigate(actionUrl);
       }
     } catch (err) {}
   };
@@ -47,52 +66,6 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#e1e9f6] transition-all">
-      {/* Top Demo Simulation Banner */}
-      <div className="bg-[#004653] text-white px-4 py-1.5 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-[#245e6b]">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#9ed5e4] text-[#004653]">
-            DEMO MODE
-          </span>
-          <span className="hidden sm:inline text-white/90">
-            Switch perspective instantly:
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => quickSwitch('volunteer')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-              user?.email === 'volunteer@thouram.org'
-                ? 'bg-white text-[#004653] font-bold shadow-sm'
-                : 'text-white/80 hover:bg-white/20'
-            }`}
-          >
-            Volunteer (Aarav)
-          </button>
-          <span className="text-white/40">|</span>
-          <button
-            onClick={() => quickSwitch('organizer')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-              user?.email === 'organizer@thouram.org'
-                ? 'bg-white text-[#004653] font-bold shadow-sm'
-                : 'text-white/80 hover:bg-white/20'
-            }`}
-          >
-            Organizer (Priya)
-          </button>
-          <span className="text-white/40">|</span>
-          <button
-            onClick={() => quickSwitch('submanager')}
-            className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-              user?.email === 'submanager@thouram.org'
-                ? 'bg-white text-[#004653] font-bold shadow-sm'
-                : 'text-white/80 hover:bg-white/20'
-            }`}
-          >
-            Sub-Manager (Rohan)
-          </button>
-        </div>
-      </div>
-
       {/* Main Navigation Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         {/* Brand */}
@@ -140,63 +113,112 @@ export default function Navbar() {
 
                 {/* Notifications Dropdown */}
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-xl border border-[#c0c8cb]/60 py-3 z-50">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-[#c0c8cb]/60 py-3 z-50">
                     <div className="flex items-center justify-between px-4 pb-2 border-b border-[#e1e9f6]">
-                      <span className="font-headline font-semibold text-sm text-[#141c25]">
-                        Notifications ({notifications.length})
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-headline font-bold text-sm text-[#141c25]">
+                          Notifications
+                        </span>
+                        {unreadCount > 0 && (
+                          <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded-full">
+                            {unreadCount} new
+                          </span>
+                        )}
+                      </div>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllRead}
-                          className="text-xs text-[#004653] hover:underline font-medium"
+                          className="text-xs text-[#004653] hover:underline font-semibold"
                         >
                           Mark all as read
                         </button>
                       )}
                     </div>
-                    <div className="max-h-72 overflow-y-auto divide-y divide-[#f2f4fc]">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-[#f2f4fc]">
                       {notifications.length === 0 ? (
-                        <div className="py-6 text-center text-xs text-[#40484b]">
+                        <div className="py-8 text-center text-xs text-[#40484b]">
+                          <span className="material-symbols-outlined text-gray-300 text-3xl block mb-1">
+                            notifications_paused
+                          </span>
                           No notifications yet.
                         </div>
                       ) : (
-                        notifications.map((n) => (
-                          <div
-                            key={n._id}
-                            className={`p-3 text-xs transition-colors ${
-                              !n.read ? 'bg-[#f8f9ff]' : 'hover:bg-gray-50'
-                            }`}
-                          >
-                            <p className="font-semibold text-[#141c25] mb-0.5">{n.title}</p>
-                            <p className="text-[#40484b] leading-relaxed">{n.message}</p>
-                            <span className="text-[10px] text-gray-400 mt-1 block">
-                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ))
+                        notifications.map((n) => {
+                          const badge = n.type === 'backup_promotion'
+                            ? { text: 'Standby Promoted', bg: 'bg-[#ffdcc2] text-[#9e4600]' }
+                            : n.type === 'event_update'
+                            ? { text: 'Event Update', bg: 'bg-[#e7eefb] text-[#004653]' }
+                            : n.type === 'application_status'
+                            ? { text: 'Application', bg: 'bg-[#d0e8d7] text-[#0b3823]' }
+                            : { text: 'Notice', bg: 'bg-gray-100 text-gray-700' };
+
+                          return (
+                            <div
+                              key={n._id}
+                              onClick={() => markSingleRead(n._id, n.actionUrl)}
+                              className={`p-3.5 text-xs transition-colors cursor-pointer group flex items-start justify-between gap-2 ${
+                                !n.read ? 'bg-[#f4f7fd] hover:bg-[#e7eefb]/70' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex-grow">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${badge.bg}`}>
+                                    {badge.text}
+                                  </span>
+                                  {!n.read && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#004653]" />
+                                  )}
+                                </div>
+                                <p className="font-bold text-[#141c25] leading-snug">{n.title}</p>
+                                <p className="text-[#40484b] text-[11px] leading-relaxed mt-0.5">{n.message}</p>
+                                <span className="text-[10px] text-gray-400 mt-1 block">
+                                  {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+                              {!n.read && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markSingleRead(n._id);
+                                  }}
+                                  title="Mark as read"
+                                  className="text-gray-400 hover:text-[#004653] p-1 rounded transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">check</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* User Avatar & Logout */}
+              {/* User Avatar & Profile Navigation */}
               <div className="flex items-center gap-2.5 pl-2 border-l border-[#e1e9f6]">
-                <img
-                  src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=128'}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full object-cover border border-[#9ed5e4]"
-                />
-                <div className="hidden lg:flex flex-col text-left">
-                  <span className="text-xs font-semibold text-[#141c25] leading-tight">
-                    {user.name}
-                  </span>
-                  <span className="text-[10px] text-[#40484b] capitalize">
-                    {user.globalRole}
-                  </span>
-                </div>
+                <Link
+                  to="/profile"
+                  title="View & Edit Profile"
+                  className="flex items-center gap-2 group hover:opacity-90 transition-opacity"
+                >
+                  <img
+                    src={user.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=128'}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full object-cover border border-[#9ed5e4] group-hover:ring-2 group-hover:ring-[#004653] transition-all"
+                  />
+                  <div className="hidden lg:flex flex-col text-left">
+                    <span className="text-xs font-semibold text-[#141c25] group-hover:text-[#004653] leading-tight">
+                      {user.name}
+                    </span>
+                    <span className="text-[10px] text-[#40484b] capitalize">
+                      {user.globalRole} • Profile
+                    </span>
+                  </div>
+                </Link>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   title="Log out"
                   className="p-1.5 text-[#40484b] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1"
                 >
@@ -246,6 +268,15 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
+          {user && (
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-lg text-sm font-semibold text-[#004653] bg-[#e7eefb]/70 hover:bg-[#e7eefb]"
+            >
+              Profile & Matching Preferences
+            </Link>
+          )}
         </div>
       )}
     </header>

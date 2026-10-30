@@ -7,6 +7,35 @@ const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const { authenticate, optionalAuth } = require('../middleware/auth');
 
+// GET /api/v1/communities/managed/list - List communities user can organize for
+router.get('/managed/list', authenticate, async (req, res, next) => {
+  try {
+    const memberships = await CommunityMembership.find({
+      user: req.user._id,
+      role: { $in: ['organizer', 'sub-manager', 'team-lead'] },
+      status: 'active'
+    }).populate('community');
+
+    let communities = memberships.map(m => m.community).filter(Boolean);
+
+    // If organizer has no explicit membership, find or attach to default approved community
+    if (communities.length === 0) {
+      communities = await Community.find({ status: 'approved' }).limit(10);
+      if (communities.length > 0 && ['organizer', 'admin'].includes(req.user.globalRole)) {
+        await CommunityMembership.findOneAndUpdate(
+          { user: req.user._id, community: communities[0]._id },
+          { role: 'organizer', status: 'active' },
+          { upsert: true, new: true }
+        );
+      }
+    }
+
+    res.status(200).json({ success: true, data: communities });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/v1/communities - List public communities
 router.get('/', optionalAuth, async (req, res, next) => {
   try {

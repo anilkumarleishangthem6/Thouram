@@ -62,23 +62,37 @@ router.put('/profile', authenticate, async (req, res, next) => {
     if (interests !== undefined) profile.interests = interests;
     if (availability !== undefined) profile.availability = availability;
     if (languages !== undefined) profile.languages = languages;
-    if (city !== undefined) profile.city = city;
-    if (travelRadiusKm !== undefined) profile.travelRadiusKm = travelRadiusKm;
     if (accessibilityPreferences !== undefined) profile.accessibilityPreferences = accessibilityPreferences;
-
-    if (location?.coordinates) {
-      profile.location = {
-        type: 'Point',
-        coordinates: location.coordinates
-      };
-    }
-
-    await profile.save();
-
-    if (phone) {
-      req.user.phone = phone;
-      await req.user.save();
-    }
+    
+        if (!profile.location) profile.location = {};
+        if (city !== undefined) profile.location.city = city;
+        if (travelRadiusKm !== undefined) profile.location.travelRadiusKm = travelRadiusKm;
+        if (location?.city !== undefined) profile.location.city = location.city;
+        if (location?.area !== undefined) profile.location.area = location.area;
+        if (location?.travelRadiusKm !== undefined) profile.location.travelRadiusKm = location.travelRadiusKm;
+    
+        if (location?.coordinates) {
+          profile.location.type = 'Point';
+          profile.location.coordinates = location.coordinates;
+        }
+    
+        let points = 20;
+        if (profile.bio && profile.bio.length > 10) points += 20;
+        if (profile.skills && profile.skills.length > 0) points += 20;
+        if (profile.interests && profile.interests.length > 0) points += 20;
+        if (profile.location?.city) points += 10;
+        if (profile.languages && profile.languages.length > 0) points += 10;
+        profile.profileCompletionPercent = Math.min(100, points);
+    
+        await profile.save();
+    
+        if (req.body.name) {
+          req.user.name = req.body.name;
+        }
+        if (phone !== undefined) {
+          req.user.phone = phone;
+        }
+        await req.user.save();
 
     res.status(200).json({
       success: true,
